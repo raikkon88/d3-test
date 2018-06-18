@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <script src="https://d3js.org/d3.v4.js" type="text/javascript"></script>
+  </head>
+
+  <body>
+
+  <div id="container">
+    <svg id="svg" width="300" height="300"></svg>
+  </div>
+
+
+  <script type="text/javascript">
+  /**
+   * D3 programming test to display tree structure.
+   */
+
+
+   /**
+    * Given a json tree as treeData and a d3.treemap()
+    * Mounts all information inside json tree (treeData)
+    * into d3.treemap() named tree
+    */
+   function parseJsonTree(treeData, nodes, links){
+     console.log(treeData.name);
+     nodes.push({"name": treeData.name});
+     if(treeData.children){
+       treeData.children.forEach(function(t){
+        links.push({"source": treeData.name, "target":t.name});
+        parseJsonTree(t, nodes, links);
+       });
+     }
+   }
+   
+   /** Genera una estructura en forma d'arbre */
+   let treeData = {
+      "name":1,
+      "children" : [
+        {
+          "name":11,
+          "children":[]
+        },
+        {
+          "name":12,
+          "children":[
+            {
+              "name":121,
+              "nodes":[]
+            },
+            {
+              "name":122,
+              "nodes":[]
+            }
+          ]
+        }
+      ]
+    };
+
+
+    console.log(treeData);
+    /** Captura l'svg on s'imprimeix el resultat */
+    //var svg = document.getElementById("svg");
+    //console.log(svg);
+
+    var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+    var radius = 15;
+
+    var nodes = [];
+    var links = [];
+    parseJsonTree(treeData, nodes, links);
+    console.log(nodes);
+    console.log(links);
+
+    var link_force = d3.forceLink(links).id(function(d){return d.name;})
+                       .distance(30);
+    var charge_force = d3.forceManyBody().strength(-120);
+    var center_force = d3.forceCenter(300 / 2, 300 / 2);
+
+
+    var simulation = d3.forceSimulation()
+                       .nodes(nodes)
+                       .force("charge_force", charge_force)
+                       .force("link_force", link_force)
+                       .force("center_force", center_force)
+                       .on("tick", tick);
+
+
+    //draw lines for the links
+    var link = svg.append("g")
+          .attr("class", "links")
+        .selectAll("line")
+        .data(links)
+        .enter().append("line")
+          .attr("stroke-width", 2)
+          .style("stroke", "blue");
+
+    //draw circles for the nodes
+    var node = svg.append("g")
+            .attr("class", "nodes")
+            .selectAll("circle")
+            .data(nodes)
+            .enter()
+            .append("circle")
+            .attr("r", radius)
+            .attr("fill", "red");
+
+    var drag_handler = d3.drag()
+      .on("start", drag_start)
+      .on("drag", drag_drag)
+      .on("end", drag_end);
+
+    drag_handler(node);
+
+    //drag handler
+    //d is the node
+    function drag_start(d) {
+     if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    function drag_drag(d) {
+      d.fx = d3.event.x;
+      d.fy = d3.event.y;
+    }
+
+
+    function drag_end(d) {
+      if (!d3.event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    function tick(e) {
+        // Push sources up and targets down to form a weak tree.
+        link
+            .each(function(d) {
+              console.log("d.source.y -> " + d.source.y);
+              console.log("d.target.y -> " + d.target.y);
+              d.source.y -= 0.5, d.target.y += 0.5;
+            })//d.source.y -= k, d.target.y += k; })
+            .attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
+
+        node
+            .attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+      }
+
+  </script>
+
+
+  </body>
+</html>

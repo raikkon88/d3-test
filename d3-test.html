@@ -18,19 +18,26 @@
    */
 
    var max_level = 0;
+   var svg = d3.select("svg"),
+   width = +svg.attr("width"),
+   height = +svg.attr("height");
+   var radius = 8;
 
    /**
     * Given a json tree as treeData and a d3.treemap()
     * Mounts all information inside json tree (treeData)
     * into d3.treemap() named tree
     */
-   function parseJsonTree(treeData, nodes, links, level){
+   function parseJsonTree(treeData, nodes, links, level, brother_length, start, end){
      if(level > max_level) { max_level = level; }
-     nodes.push({"name": treeData.name, "level": level});
-     if(treeData.children){
+     nodes.push({"name": treeData.name, "level": level, "xPos": (start + end) / 2});
+     if(treeData.children.length > 0){
+       var difference = ((end - start) / (treeData.children.length));
+       var next_start = start;
        treeData.children.forEach(function(t){
         links.push({"source": treeData.name, "target":t.name });
-        parseJsonTree(t, nodes, links, level+1);
+        parseJsonTree(t, nodes, links, level+1, treeData.children.length, next_start, next_start + difference);
+        next_start += difference;
        });
      }
    }
@@ -38,44 +45,27 @@
    /** Genera una estructura en forma d'arbre */
    let treeData = {
       "name":1,
-      "level":1,
       "children" : [
         {
           "name":11,
-          "level":2,
           "children":[]
         },
         {
           "name":12,
-          "level":2,
           "children":[
             {
               "name":121,
-              "level":3,
               "children":[]
             },
             {
               "name":122,
-              "level":3,
               "children":[]
             }
           ]
         },
         {
-          "name":13,
-          "level":2,
-          "children":[
-            {
-              "name":131,
-              "level":3,
-              "children":[]
-            },
-            {
-              "name":132,
-              "level":3,
-              "children":[]
-            }
-          ]
+          "name":2,
+          "children" : []
         }
       ]
     };
@@ -86,22 +76,19 @@
     //var svg = document.getElementById("svg");
     //console.log(svg);
 
-    var svg = d3.select("svg"),
-    width = +svg.attr("width"),
-    height = +svg.attr("height");
-    var radius = 15;
+
 
     var nodes = [];
     var links = [];
-    parseJsonTree(treeData, nodes, links, max_level + 1);
+    parseJsonTree(treeData, nodes, links, max_level + 1, treeData.children.length, 0, width);
     var level_distance = width / (max_level + 1);
     console.log(svg);
     console.log(links);
 
     var link_force = d3.forceLink(links).id(function(d){return d.name;})
-                       .distance(50);
+                       .distance(level_distance);
     var charge_force = d3.forceManyBody().strength(-100);
-    var center_force = d3.forceCenter(300 / 2, 300 / 2);
+    var center_force = d3.forceCenter(width / 2, height / 2);
 
 
     var simulation = d3.forceSimulation()
@@ -109,6 +96,7 @@
                        .force("center_force", center_force)
                        .force("charge_force", charge_force)
                        .force("link_force", link_force)
+    //                   .force("forceX", charge_force)
                        .on("tick", tick);
 
 
@@ -166,14 +154,14 @@
           .each(function(d) {
             d.source.y -= k, d.target.y += k;
           })//d.source.y -= k, d.target.y += k; })*/
-          .attr("x1", function(d) { return d.source.x; })
-          .attr("y1", function(d) { return d.source.level * 50; })
-          .attr("x2", function(d) { return d.target.x; })
-          .attr("y2", function(d) { return d.target.level * 50; });
+          .attr("x1", function(d) { return d.source.xPos; })
+          .attr("y1", function(d) { return d.source.level * level_distance; })
+          .attr("x2", function(d) { return d.target.xPos; })
+          .attr("y2", function(d) { return d.target.level * level_distance; });
 
       node
-          .attr("cx", function(d) { return d.x; })
-          .attr("cy", function(d) { return d.level * 50; });
+          .attr("cx", function(d) { return d.xPos; })
+          .attr("cy", function(d) { return d.level * level_distance; });
       }
 
   </script>
